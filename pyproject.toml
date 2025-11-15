@@ -1,2 +1,86 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zvt"
+version = "0.13.4"
+description = "Unified, modular quant framework for human beings"
+readme = "README.md"
+requires-python = "==3.13.*"
+license = {text = "MIT"}
+authors = [
+    {name = "foolcage", email = "5533061@qq.com"},
+]
+keywords = ["quant", "stock", "finance", "fintech", "big-data", "zvt", "technical-analysis", "trading-platform", "pandas", "fundamental-analysis"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Customer Service",
+    "Intended Audience :: Education",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "requests>=2.32.5",
+    "SQLAlchemy>=2.0.44",
+    "pandas>=2.3.3",
+    "pydantic>=2.12.4",
+    "arrow>=1.4.0",
+    "openpyxl>=3.1.5",
+    "demjson3>=3.0.6",
+    "plotly>=6.4.0",
+    "dash>=3.3.0",
+    "jqdatapy>=0.1.8",
+    "dash-bootstrap-components>=2.0.4",
+    "dash-daq>=0.5.0",
+    "scikit-learn>=1.7.2",
+    "fastapi>=0.121.2",
+    "fastapi-pagination>=0.12.33",
+    "apscheduler>=3.11.1",
+    "eastmoneypy>=0.2.0",
+    "orjson>=3.10.14",
+    "numpy>=2.3.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/zvtvz/zvt"
+Repository = "https://github.com/zvtvz/zvt"
+"Bug Reports" = "https://github.com/zvtvz/zvt/issues"
+Funding = "https://www.foolcage.com/zvt"
+Source = "https://github.com/zvtvz/zvt"
+
+[project.scripts]
+zvt = "zvt.main:main"
+zvt_server = "zvt.zvt_server:main"
+zvt_export = "zvt.plugin:export"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zvt"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/zvt/**",
+    "README.md",
+    "README-cn.md",
+    "LICENSE",
+    "requirements.txt",
+]
+exclude = [
+    "tests/**",
+    "docs/**",
+    "examples/**",
+    "api-tests/**",
+]
+
 [tool.black]
 line-length = 120
