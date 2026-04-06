@@ -1,13 +1,33 @@
 # -*- coding: utf-8 -*-
 import inspect
+import json
 from datetime import timedelta
-from typing import List, Union
+from typing import Dict, List, Union
 
 import pandas as pd
+import pkg_resources
 from sqlalchemy import Column, String, DateTime, Float
 from sqlalchemy.orm import Session
 
 from zvt.contract import IntervalLevel
+
+
+def _get_schema_providers() -> Dict[str, List[str]]:
+    """Get schema_providers merged with package default (ensures defaults are available)."""
+    default = {}
+    try:
+        with open(pkg_resources.resource_filename("zvt", "config.json")) as f:
+            default = (json.load(f).get("storage") or {}).get("schema_providers") or {}
+    except Exception:
+        pass
+    try:
+        from zvt import zvt_config
+        user = (zvt_config.get("storage") or {}).get("schema_providers") or {}
+        default = dict(default)
+        default.update(user)
+    except Exception:
+        pass
+    return default
 from zvt.utils.time_utils import date_and_time, is_same_date_time, now_pd_timestamp
 
 
@@ -57,27 +77,32 @@ class Mixin(object):
 
     @classmethod
     def register_provider(cls, provider):
-        """
-        register the provider to the schema defined by cls
+        """(Deprecated) Providers now come from Recorder registration."""
+        if not hasattr(cls, "_zvt_providers_override"):
+            cls._zvt_providers_override = []
+        if provider not in cls._zvt_providers_override:
+            cls._zvt_providers_override.append(provider)
 
-        :param provider:
-        """
-        # don't make providers as class field,it should be created for the sub class as need
-        if not hasattr(cls, "providers"):
-            cls.providers = []
-
-        if provider not in cls.providers:
-            cls.providers.append(provider)
+    @classmethod
+    def is_internal(cls) -> bool:
+        """True if schema is internal/business data, not tied to external data source."""
+        return getattr(cls, "_zvt_internal", False)
 
     @classmethod
     def get_providers(cls) -> List[str]:
         """
-        providers of the schema defined by cls
-
-        :return: providers
+        Providers: from provider_map_recorder (Recorder registration), or config storage.schema_providers.
+        Only use provider_map_recorder when set on this concrete schema class (cls.__dict__), not inherited
+        from a shared base like KdataCommon - otherwise StockQuote would wrongly get Stock1dKdata's providers.
         """
-        assert hasattr(cls, "providers")
-        return cls.providers
+        if "provider_map_recorder" in cls.__dict__ and cls.provider_map_recorder:
+            return list(cls.provider_map_recorder.keys())
+        db_name = getattr(cls, "_zvt_db_name", None)
+        if db_name:
+            schema_providers = _get_schema_providers()
+            if db_name in schema_providers:
+                return schema_providers[db_name]
+        return getattr(cls, "_zvt_providers_override", []) or []
 
     @classmethod
     def test_data_correctness(cls, provider, data_samples):
@@ -95,7 +120,7 @@ class Mixin(object):
         from .api import get_by_id
 
         if not provider:
-            provider = cls.providers[provider_index]
+            provider = cls.get_providers()[provider_index]
         return get_by_id(data_schema=cls, id=id, provider=provider)
 
     @classmethod
@@ -152,7 +177,7 @@ class Mixin(object):
         from .api import get_data
 
         if not provider:
-            provider = cls.providers[provider_index]
+            provider = cls.get_providers()[provider_index]
         return get_data(
             data_schema=cls,
             ids=ids,
@@ -244,7 +269,7 @@ class Mixin(object):
             if provider:
                 recorder_class = cls.provider_map_recorder[provider]
             else:
-                recorder_class = cls.provider_map_recorder[cls.providers[provider_index]]
+                recorder_class = cls.provider_map_recorder[cls.get_providers()[provider_index]]
 
             # get args for specific recorder class
             from zvt.contract.recorder import TimeSeriesDataRecorder
