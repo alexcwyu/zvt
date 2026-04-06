@@ -1,5 +1,8 @@
 # ZVT Documentation
 
+> **Last Updated**: 2026-04-06T16:25:30Z  \
+> **Git Hash**: `e2f433f`
+
 Last updated: 2026-04-06
 Source: [src/zvt/](../src/zvt/)
 
