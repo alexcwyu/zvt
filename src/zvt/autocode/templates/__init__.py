@@ -2,7 +2,7 @@
 import os
 import string
 
-from pkg_resources import resource_string
+import importlib.resources
 
 from zvt.utils.file_utils import list_all_files
 
@@ -18,7 +18,7 @@ def all_tpls(project: str, entity_type: str):
     tpl_files = list_all_files(tpl_dir, ext="template", return_base_name=True)
     tpls = []
     for tpl in tpl_files:
-        data = resource_string(__name__, tpl)
+        data = importlib.resources.files(__name__).joinpath(tpl).read_bytes()
         file_location = os.path.splitext(os.path.basename(tpl))[0]
         # we assure that line endings are converted to '\n' for all OS
         data = data.decode(encoding="utf-8").replace(os.linesep, "\n")

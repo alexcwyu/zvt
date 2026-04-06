@@ -10,18 +10,16 @@ from logging.handlers import RotatingFileHandler
 from typing import List
 
 import pandas as pd
-import pkg_resources
-from pkg_resources import get_distribution, DistributionNotFound
+import importlib.metadata
+import importlib.resources
 
 from zvt.consts import DATA_SAMPLE_ZIP_PATH, ZVT_TEST_HOME, ZVT_HOME, ZVT_TEST_DATA_PATH, ZVT_TEST_ZIP_DATA_PATH
 
 try:
     dist_name = __name__
-    __version__ = get_distribution(dist_name).version
-except DistributionNotFound:
+    __version__ = importlib.metadata.version(dist_name)
+except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
-finally:
-    del get_distribution, DistributionNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +68,7 @@ pd.set_option("display.max_columns", None)
 zvt_env = {}
 
 # load default config
-with open(pkg_resources.resource_filename("zvt", "config.json")) as f:
+with open(str(importlib.resources.files("zvt").joinpath("config.json"))) as f:
     zvt_config = json.load(f)
 
 _plugins = {}
@@ -124,7 +122,7 @@ def init_env(zvt_home: str, **kwargs) -> dict:
 
 def init_resources(resource_path, force_overwrite=True):
     package_name = "zvt"
-    package_dir = pkg_resources.resource_filename(package_name, "resources")
+    package_dir = str(importlib.resources.files(package_name).joinpath("resources"))
     from zvt.utils.file_utils import list_all_files
 
     files: List[str] = list_all_files(package_dir, ext=None)
@@ -151,7 +149,7 @@ def init_config(pkg_name: str = None, current_config: dict = None, **kwargs) -> 
     config_path = os.path.join(zvt_env["zvt_home"], config_file)
     if not os.path.exists(config_path):
         try:
-            sample_config = pkg_resources.resource_filename(pkg_name, "config.json")
+            sample_config = str(importlib.resources.files(pkg_name).joinpath("config.json"))
             if os.path.exists(sample_config):
                 shutil.copyfile(sample_config, config_path)
         except Exception as e:

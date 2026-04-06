@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Dict, List, Union
 
 import pandas as pd
-import pkg_resources
+import importlib.resources
 from sqlalchemy import Column, String, DateTime, Float
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ def _get_schema_providers() -> Dict[str, List[str]]:
     """Get schema_providers merged with package default (ensures defaults are available)."""
     default = {}
     try:
-        with open(pkg_resources.resource_filename("zvt", "config.json")) as f:
+        with open(str(importlib.resources.files("zvt").joinpath("config.json"))) as f:
             default = (json.load(f).get("storage") or {}).get("schema_providers") or {}
     except Exception:
         pass
