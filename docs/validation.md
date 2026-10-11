@@ -21,7 +21,7 @@ Run date: 2026-10-12. Branch: `feature/ayu_develop`. Interpreter: `3.15.0 (main,
 
 Current unresolved checks:
 
-- tests: exit 1; see [docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log](../../docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log)
+- tests: exit 1; see [check record](maintenance/index.html)
 
 ## Latest full-suite output
 
@@ -235,31 +235,31 @@ Unsuccessful rows are retained as historical compatibility attempts; they are no
 
 | Command | Exit | Seconds | Evidence |
 |---|---:|---:|---|
-| `uv lock --upgrade --python 3.15` | 0 | 0.3 | [log](../../docs/maintenance-2026-10-12/zvt-lock-3.15.log) |
-| `uv sync --all-extras --all-groups --python 3.15 --no-build --no-install-project` | 2 | 1.73 | [log](../../docs/maintenance-2026-10-12/zvt-wheel-probe-3.15.log) |
-| `uv lock --upgrade --python 3.14` | 0 | 0.31 | [log](../../docs/maintenance-2026-10-12/zvt-lock-3.14.log) |
-| `uv sync --all-extras --all-groups --python 3.14 --no-build --no-install-project` | 2 | 0.05 | [log](../../docs/maintenance-2026-10-12/zvt-wheel-probe-3.14.log) |
-| `uv sync --all-extras --all-groups --python 3.14` | 0 | 0.87 | [log](../../docs/maintenance-2026-10-12/zvt-sync-3.14.log) |
-| `uv build --python 3.14` | 0 | 4.23 | [log](../../docs/maintenance-2026-10-12/zvt-build.log) |
-| `/Users/alex/.local/share/uv/python/cpython-3.14-macos-aarch64-none/bin/python3.14 -m compileall -q src` | 0 | 0.62 | [log](../../docs/maintenance-2026-10-12/zvt-compile.log) |
-| `uv run --no-sync python -m pytest` | 1 | 80.98 | [log](../../docs/maintenance-2026-10-12/zvt-tests.log) |
-| `uv run --no-sync python -m pytest` | 1 | 725.33 | [log](../../docs/maintenance-2026-10-12/zvt-tests-pandas-sqlalchemy-compatibility.log) |
-| `uv lock --upgrade --python 3.15` | 0 | 0.58 | [log](../../docs/maintenance-2026-10-12/zvt-lock-python315-source-supported.log) |
-| `uv sync --all-extras --all-groups --python 3.15` | 0 | 4.91 | [log](../../docs/maintenance-2026-10-12/zvt-sync-python315-source-supported.log) |
-| `env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60` | 1 | 25.1 | [log](../../docs/maintenance-2026-10-12/zvt-tests-python315-headless-isolated-mocks.log) |
-| `uv run --no-sync python -Werror::SyntaxWarning -m compileall -q -f src` | 0 | 0.38 | [log](../../docs/maintenance-2026-10-12/zvt-compile-clean-source.log) |
-| `env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60` | 1 | 119.43 | [log](../../docs/maintenance-2026-10-12/zvt-tests-python315-headless-current-source.log) |
-| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 130.4 | [log](../../docs/maintenance-2026-10-12/zvt-tests-python315-current-apis.log) |
-| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 108.87 | [log](../../docs/maintenance-2026-10-12/zvt-tests-python315-full-positional-account.log) |
-| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 122.39 | [log](../../docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log) |
-| `uv lock --upgrade` | 0 | 0.55 | [log](../../docs/maintenance-2026-10-12/zvt-lock-python315-final.log) |
-| `uv sync --frozen --all-extras --all-groups` | 0 | 0.16 | [log](../../docs/maintenance-2026-10-12/zvt-sync-python315-final.log) |
-| `uv build` | 0 | 2.57 | [log](../../docs/maintenance-2026-10-12/zvt-build-python315-final.log) |
-| `uv run --frozen --all-extras --all-groups python -m compileall -q src tests` | 0 | 0.14 | [log](../../docs/maintenance-2026-10-12/zvt-compile-python315-final-recorded.log) |
-| `uv run --frozen --all-extras --all-groups python -c import sys, importlib.metadata as m; print(sys.version); print('\n'.join(sorted(d.metadata['Name']+'=='+d.version for d in m.distributions())))` | 0 | 0.18 | [log](../../docs/maintenance-2026-10-12/zvt-versions-final.log) |
-| `uv add --group dev ipython nbformat` | 0 | 0.04 | [log](../../docs/maintenance-2026-10-12/zvt-dependency-add-final-recorded.log) |
+| `uv lock --upgrade --python 3.15` | 0 | 0.3 | [check record](maintenance/index.html) |
+| `uv sync --all-extras --all-groups --python 3.15 --no-build --no-install-project` | 2 | 1.73 | [check record](maintenance/index.html) |
+| `uv lock --upgrade --python 3.14` | 0 | 0.31 | [check record](maintenance/index.html) |
+| `uv sync --all-extras --all-groups --python 3.14 --no-build --no-install-project` | 2 | 0.05 | [check record](maintenance/index.html) |
+| `uv sync --all-extras --all-groups --python 3.14` | 0 | 0.87 | [check record](maintenance/index.html) |
+| `uv build --python 3.14` | 0 | 4.23 | [check record](maintenance/index.html) |
+| `/Users/alex/.local/share/uv/python/cpython-3.14-macos-aarch64-none/bin/python3.14 -m compileall -q src` | 0 | 0.62 | [check record](maintenance/index.html) |
+| `uv run --no-sync python -m pytest` | 1 | 80.98 | [check record](maintenance/index.html) |
+| `uv run --no-sync python -m pytest` | 1 | 725.33 | [check record](maintenance/index.html) |
+| `uv lock --upgrade --python 3.15` | 0 | 0.58 | [check record](maintenance/index.html) |
+| `uv sync --all-extras --all-groups --python 3.15` | 0 | 4.91 | [check record](maintenance/index.html) |
+| `env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60` | 1 | 25.1 | [check record](maintenance/index.html) |
+| `uv run --no-sync python -Werror::SyntaxWarning -m compileall -q -f src` | 0 | 0.38 | [check record](maintenance/index.html) |
+| `env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60` | 1 | 119.43 | [check record](maintenance/index.html) |
+| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 130.4 | [check record](maintenance/index.html) |
+| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 108.87 | [check record](maintenance/index.html) |
+| `env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v` | 1 | 122.39 | [check record](maintenance/index.html) |
+| `uv lock --upgrade` | 0 | 0.55 | [check record](maintenance/index.html) |
+| `uv sync --frozen --all-extras --all-groups` | 0 | 0.16 | [check record](maintenance/index.html) |
+| `uv build` | 0 | 2.57 | [check record](maintenance/index.html) |
+| `uv run --frozen --all-extras --all-groups python -m compileall -q src tests` | 0 | 0.14 | [check record](maintenance/index.html) |
+| `uv run --frozen --all-extras --all-groups python -c import sys, importlib.metadata as m; print(sys.version); print('\n'.join(sorted(d.metadata['Name']+'=='+d.version for d in m.distributions())))` | 0 | 0.18 | [check record](maintenance/index.html) |
+| `uv add --group dev ipython nbformat` | 0 | 0.04 | [check record](maintenance/index.html) |
 
-The versions-final log records the exact interpreter patch release and every installed dependency version. The machine-readable [result](../../docs/maintenance-2026-10-12/zvt-result.json) includes branch/default ancestry, status, artifacts and unresolved checks.
+The versions-final log records the exact interpreter patch release and every installed dependency version. The machine-readable [verification record](maintenance/verification.json) includes branch/default ancestry, status, artifacts and unresolved checks.
 
 ## Dependency floor refresh
 
