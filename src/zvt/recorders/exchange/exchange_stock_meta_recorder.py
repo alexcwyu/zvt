@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import io
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 import pandas as pd
 import requests
@@ -10,6 +12,37 @@ from zvt.contract.recorder import Recorder
 from zvt.domain import Stock, StockDetail
 from zvt.recorders.consts import DEFAULT_SH_HEADER, DEFAULT_SZ_HEADER
 from zvt.utils.time_utils import to_pd_timestamp
+
+
+def _stock_list_workbook(content):
+    """Restore the omitted Normal style in Shenzhen's otherwise valid XLSX export.
+
+    Existing cell values, cell formats and worksheet members are preserved. The
+    export supplies style index zero but omits its required named-style entry.
+    """
+    stream = io.BytesIO(content)
+    namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    with ZipFile(stream) as source:
+        stylesheet = ElementTree.fromstring(source.read("xl/styles.xml"))
+        named_styles = stylesheet.find(f"{{{namespace}}}cellStyles")
+        if named_styles is not None and len(named_styles):
+            return io.BytesIO(content)
+        style_formats = stylesheet.find(f"{{{namespace}}}cellStyleXfs")
+        if style_formats is None or not len(style_formats):
+            return io.BytesIO(content)
+        if named_styles is None:
+            named_styles = ElementTree.SubElement(stylesheet, f"{{{namespace}}}cellStyles")
+        named_styles.set("count", "1")
+        ElementTree.SubElement(named_styles, f"{{{namespace}}}cellStyle",
+                              {"name": "Normal", "xfId": "0", "builtinId": "0"})
+        repaired = io.BytesIO()
+        with ZipFile(repaired, "w") as target:
+            for member in source.infolist():
+                payload = (ElementTree.tostring(stylesheet, encoding="utf-8")
+                           if member.filename == "xl/styles.xml" else source.read(member.filename))
+                target.writestr(member, payload)
+    repaired.seek(0)
+    return repaired
 
 
 class ExchangeStockMetaRecorder(Recorder):
@@ -40,7 +73,7 @@ class ExchangeStockMetaRecorder(Recorder):
         if exchange == "sh":
             df = pd.read_csv(
                 io.BytesIO(response.content),
-                sep="\s+",
+                sep=r"\s+",
                 encoding="GB2312",
                 dtype=str,
                 parse_dates=["上市日期"],
@@ -53,7 +86,7 @@ class ExchangeStockMetaRecorder(Recorder):
 
         elif exchange == "sz":
             df = pd.read_excel(
-                io.BytesIO(response.content),
+                _stock_list_workbook(response.content),
                 sheet_name="A股列表",
                 dtype=str,
                 parse_dates=["A股上市日期"],

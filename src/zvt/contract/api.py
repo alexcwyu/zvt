@@ -277,7 +277,7 @@ def get_by_id(data_schema, id: str, provider: str = None, session: Session = Non
     if not session:
         session = get_db_session(provider=provider, data_schema=data_schema)
 
-    return session.query(data_schema).get(id)
+    return session.get(data_schema, id)
 
 
 def _row2dict(row):

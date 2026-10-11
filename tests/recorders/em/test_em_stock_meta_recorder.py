@@ -4,6 +4,7 @@ import logging
 import sys
 import types
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -47,16 +48,18 @@ def load_em_stock_meta_module():
     time_utils_module = types.ModuleType("zvt.utils.time_utils")
     time_utils_module.to_pd_timestamp = lambda value: value
 
-    sys.modules["zvt"] = zvt_module
-    sys.modules["zvt.contract"] = contract_module
-    sys.modules["zvt.contract.api"] = contract_api_module
-    sys.modules["zvt.contract.recorder"] = contract_recorder_module
-    sys.modules["zvt.domain"] = domain_module
-    sys.modules["zvt.recorders"] = recorders_module
-    sys.modules["zvt.recorders.em"] = em_module
-    sys.modules["zvt.recorders.em.em_api"] = em_api_module
-    sys.modules["zvt.utils.pd_utils"] = pd_utils_module
-    sys.modules["zvt.utils.time_utils"] = time_utils_module
+    stub_modules = {
+        "zvt": zvt_module,
+        "zvt.contract": contract_module,
+        "zvt.contract.api": contract_api_module,
+        "zvt.contract.recorder": contract_recorder_module,
+        "zvt.domain": domain_module,
+        "zvt.recorders": recorders_module,
+        "zvt.recorders.em": em_module,
+        "zvt.recorders.em.em_api": em_api_module,
+        "zvt.utils.pd_utils": pd_utils_module,
+        "zvt.utils.time_utils": time_utils_module,
+    }
 
     module_path = (
         Path(__file__).resolve().parents[3]
@@ -69,7 +72,8 @@ def load_em_stock_meta_module():
     )
     spec = importlib.util.spec_from_file_location("test_em_stock_meta_module", module_path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with patch.dict(sys.modules, stub_modules):
+        spec.loader.exec_module(module)
     return module
 
 

@@ -95,6 +95,9 @@ class Mixin(object):
         Only use provider_map_recorder when set on this concrete schema class (cls.__dict__), not inherited
         from a shared base like KdataCommon - otherwise StockQuote would wrongly get Stock1dKdata's providers.
         """
+        if cls.is_internal():
+            # Business schemas use ZVT storage rather than an external recorder.
+            return ["zvt"]
         if "provider_map_recorder" in cls.__dict__ and cls.provider_map_recorder:
             return list(cls.provider_map_recorder.keys())
         db_name = getattr(cls, "_zvt_db_name", None)

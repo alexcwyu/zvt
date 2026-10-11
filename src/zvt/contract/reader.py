@@ -218,7 +218,7 @@ class DataReader(Drawable):
                 )
 
                 if pd_is_not_null(added_df):
-                    self.logger.info(f'got new data:{df.to_json(orient="records", force_ascii=False)}')
+                    self.logger.info(f'got new data:{df.to_json(orient="records", force_ascii=False, date_format="iso")}')
 
                     for listener in self.data_listeners:
                         listener.on_entity_data_changed(entity=entity_id, added_data=added_df)

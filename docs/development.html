@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Current uv development workflow</title><style>
+:root{color-scheme:light dark;--bg:#f6f8fa;--paper:#fff;--fg:#182332;--muted:#526274;--line:#d9e0e7;--accent:#1769aa}
+@media(prefers-color-scheme:dark){:root{--bg:#111820;--paper:#192330;--fg:#e6edf3;--muted:#a0b3c5;--line:#344354;--accent:#71b7ee}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,sans-serif}
+header{border-bottom:1px solid var(--line);padding:16px max(24px,calc((100vw - 1120px)/2));background:var(--paper);font-size:14px}
+main{max-width:1120px;margin:32px auto;padding:40px 48px;background:var(--paper);border:1px solid var(--line);border-radius:12px}
+h1,h2,h3,h4{line-height:1.3;scroll-margin-top:24px}h1{font-size:2.1rem}h2{margin-top:2.5em;border-bottom:1px solid var(--line);padding-bottom:.35em}h3{margin-top:1.8em}
+a{color:var(--accent);text-underline-offset:3px}code{font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border-radius:4px;padding:2px 5px}pre{overflow:auto;border:1px solid var(--line);background:var(--bg);padding:16px;border-radius:7px}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:9px 12px;text-align:left}th{background:var(--bg)}blockquote{border-left:4px solid var(--accent);margin:16px 0;padding:4px 20px;color:var(--muted)}
+.diagram{overflow-x:auto;margin:24px 0;padding:20px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#182332}.mermaid{border:0;background:none;text-align:center}.mermaid svg{height:auto;max-width:100%}details{font-size:13px;color:#526274}.headerlink{margin-left:.4em;font-size:.7em;text-decoration:none;color:var(--muted)}
+main{min-width:0;overflow-wrap:anywhere}table,pre{max-width:100%}.diagram svg{display:block}
+th,td{min-width:120px;overflow-wrap:normal}
+@media(max-width:740px){main{margin:0;padding:24px 18px;border:0;border-radius:0}h1{font-size:1.7rem}.diagram{padding:8px}}
+@media print{header,details,.headerlink{display:none}body,main{background:#fff;color:#000;border:0;margin:0;padding:0}a{color:#000}.diagram,pre{break-inside:avoid}}
+</style></head><body><header>Engineering documentation · <a href="development.md">Markdown source</a></header><main><!-- ayu-maintenance-2026-10-12 -->
+<h1 id="current-uv-development-workflow">Current uv development workflow<a class="headerlink" href="#current-uv-development-workflow" title="Permanent link">&para;</a></h1>
+<p>The maintained branch is <code>feature/ayu_develop</code>. The selected interpreter is Python <code>3.15</code>; <code>requires-python</code> records the range that was actually resolved. Python 3.15 was attempted first. Dependency/native-wheel failures and fallback evidence are recorded in <a href="validation.md">validation.md</a>.</p>
+<pre><code class="language-sh">export UV_PYTHON_PREFERENCE=only-managed
+uv python install 3.15
+uv lock --check
+uv sync --frozen --all-extras --all-groups
+uv run --no-sync python -m compileall -q src
+uv build
+PLOTLY_RENDERER=json uv run --no-sync python -m pytest
+</code></pre>
+<p>Use <code>uv lock --upgrade</code> when intentionally refreshing dependencies, then review <code>pyproject.toml</code>, <code>uv.lock</code>, and the existing full test suite. The dependency floors were refreshed from current PyPI release metadata while preserving meaningful upstream upper bounds. Compatibility exceptions are documented with their resolver/test evidence rather than hidden by disabling tests.</p>
+<p>The <code>src/</code> layout and build-backend package discovery preserve public import names. Wheel/sdist resources include the source-associated data and templates. Optional vendor SDKs, live credentials, databases and graphical/native libraries retain their original runtime requirements. Examples and test fixtures are not promoted into the library API.</p>
+<!-- prior-development-notes -->
+
+<h2 id="compatibility-decisions">Compatibility decisions<a class="headerlink" href="#compatibility-decisions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The complete 96-case supplied suite runs on managed Python 3.15.0 without exclusions: 88 passed, 8 failed. All three supplied trader integration cases now pass.</li>
+<li>Production code uses SQLAlchemy2 declarative_base/Session.get, pandas iloc for positional access, current hour/day/month frequencies, ISO-date JSON logging and Pydantic model_validate with existing from_attributes configuration. Public provider and account APIs remain intact.</li>
+<li>Shenzhen XLSX exports omit a Normal named-style entry while providing its style index. The recorder restores only that missing metadata; worksheet values, formats and all other archive members are preserved. No warning filter is added.</li>
+<li>The preexisting isolated recorder fixture now restores sys.modules after loading its stubbed module, preventing unrelated later integration imports from using fake packages. Assertions and case counts are unchanged.</li>
+<li>Headless tests use PLOTLY_RENDERER=json with current IPython and nbformat in the dev group. Existing chart assertions execute and figures serialize without browser-server sockets.</li>
+<li>Seven JoinQuant recorder cases receive HTTP403 with the explicit provider message that non-mainland-China IP addresses are unsupported. The EastMoney kline case receives RemoteDisconnected from the remote HTTPS endpoint. These eight external failures remain visible; no tests are disabled.</li>
+</ul>
+<p>For headless plotting validation, set <code>PLOTLY_RENDERER=json</code>; this renders figures through Plotly without opening browser-server sockets. Existing provider/recorder/trader cases still execute unchanged.</p>
+<h1 id="zvt-development-guide">ZVT Development Guide<a class="headerlink" href="#zvt-development-guide" title="Permanent link">&para;</a></h1>
+<p>Last updated: 2026-04-06
+Source: <a href="../src/zvt/">src/zvt/</a></p>
+<p>This guide covers design patterns, coding standards, and practical examples for extending ZVT with custom factors, recorders, and traders.</p>
+<h2 id="design-patterns">Design Patterns<a class="headerlink" href="#design-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="domain-driven-design-ddd">Domain-Driven Design (DDD)<a class="headerlink" href="#domain-driven-design-ddd" title="Permanent link">&para;</a></h3>
+<p>ZVT is organized around domain concepts rather than technical layers. Each market entity type (stock, index, fund) is a bounded context with its own:</p>
+<ul>
+<li><strong>Entity model</strong> -- e.g., <code>Stock</code> in <code>src/zvt/domain/meta/stock_meta.py</code></li>
+<li><strong>Data schemas</strong> -- e.g., <code>Stock1dKdata</code> in <code>src/zvt/domain/quotes/stock/</code></li>
+<li><strong>Recorders</strong> -- e.g., <code>EMStockKdataRecorder</code> in <code>src/zvt/recorders/em/</code></li>
+<li><strong>Factors</strong> -- e.g., <code>TechnicalFactor</code> operating on stock kdata</li>
+</ul>
+<p>The entity ID (<code>{entity_type}_{exchange}_{code}</code>) serves as the ubiquitous language linking all layers.</p>
+<h3 id="schema-first-data-modeling">Schema-First Data Modeling<a class="headerlink" href="#schema-first-data-modeling" title="Permanent link">&para;</a></h3>
+<p>All data is defined as SQLAlchemy declarative models before any code touches it:</p>
+<pre><code class="language-python">class Stock(StockMetaBase, TradableEntity):
+    __tablename__ = &quot;stock&quot;
+    float_cap = Column(Float)
+    total_cap = Column(Float)
+    controlling_holder = Column(String)
+</code></pre>
+<p>This provides:
+- Automatic table creation and migration
+- Type-safe queries via SQLAlchemy ORM
+- Self-documenting data structures
+- Provider-independent data definitions</p>
+<h3 id="registry-pattern">Registry Pattern<a class="headerlink" href="#registry-pattern" title="Permanent link">&para;</a></h3>
+<p>ZVT uses metaclass-based auto-registration for recorders and factors:</p>
+<div class="diagram"><pre class="mermaid">graph LR
+    subgraph &quot;At Class Definition Time&quot;
+        RC[Recorder class defined] --&gt;|Meta.__new__| REG1[Register provider + data_schema&lt;br/&gt;in zvt_context]
+        FC[Factor class defined] --&gt;|FactorMeta.__new__| REG2[Register in&lt;br/&gt;factor_cls_registry]
+        EC[Entity class defined] --&gt;|@register_entity| REG3[Register entity type&lt;br/&gt;in zvt_context]
+    end
+
+    subgraph &quot;At Runtime&quot;
+        CALL[Schema.record_data] --&gt;|Lookup| REG1
+        TRADER[Trader.init_factors] --&gt;|Instantiate| REG2
+        API[get_entities] --&gt;|Lookup| REG3
+    end</pre><details><summary>Diagram source</summary><pre><code>graph LR
+    subgraph &quot;At Class Definition Time&quot;
+        RC[Recorder class defined] --&gt;|Meta.__new__| REG1[Register provider + data_schema&lt;br/&gt;in zvt_context]
+        FC[Factor class defined] --&gt;|FactorMeta.__new__| REG2[Register in&lt;br/&gt;factor_cls_registry]
+        EC[Entity class defined] --&gt;|@register_entity| REG3[Register entity type&lt;br/&gt;in zvt_context]
+    end
+
+    subgraph &quot;At Runtime&quot;
+        CALL[Schema.record_data] --&gt;|Lookup| REG1
+        TRADER[Trader.init_factors] --&gt;|Instantiate| REG2
+        API[get_entities] --&gt;|Lookup| REG3
+    end</code></pre></details></div>
+
+<h3 id="observer-listener-pattern">Observer / Listener Pattern<a class="headerlink" href="#observer-listener-pattern" title="Permanent link">&para;</a></h3>
+<p>The trading system uses the observer pattern extensively:</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+    class DataListener {
+        &lt;&lt;interface&gt;&gt;
+        +on_data_loaded(data)
+        +on_data_changed(data)
+        +on_entity_data_changed(entity, data)
+    }
+
+    class TradingListener {
+        &lt;&lt;interface&gt;&gt;
+        +on_trading_open(timestamp)
+        +on_trading_signals(signals)
+        +on_trading_close(timestamp)
+        +on_trading_finish(timestamp)
+        +on_trading_error(timestamp, error)
+    }
+
+    class Factor {
+        +register_data_listener(listener)
+    }
+
+    class Trader {
+        +register_trading_signal_listener(listener)
+    }
+
+    DataListener &lt;|.. Factor : implements
+    TradingListener &lt;|.. SimAccountService : implements
+    Factor ..&gt; DataListener : notifies
+    Trader ..&gt; TradingListener : notifies</pre><details><summary>Diagram source</summary><pre><code>classDiagram
+    class DataListener {
+        &lt;&lt;interface&gt;&gt;
+        +on_data_loaded(data)
+        +on_data_changed(data)
+        +on_entity_data_changed(entity, data)
+    }
+
+    class TradingListener {
+        &lt;&lt;interface&gt;&gt;
+        +on_trading_open(timestamp)
+        +on_trading_signals(signals)
+        +on_trading_close(timestamp)
+        +on_trading_finish(timestamp)
+        +on_trading_error(timestamp, error)
+    }
+
+    class Factor {
+        +register_data_listener(listener)
+    }
+
+    class Trader {
+        +register_trading_signal_listener(listener)
+    }
+
+    DataListener &lt;|.. Factor : implements
+    TradingListener &lt;|.. SimAccountService : implements
+    Factor ..&gt; DataListener : notifies
+    Trader ..&gt; TradingListener : notifies</code></pre></details></div>
+
+<p><code>Factor</code> implements <code>DataListener</code> and registers itself to recompute when data changes. <code>Trader</code> dispatches <code>TradingSignal</code> objects to all registered <code>TradingListener</code> instances (primarily <code>SimAccountService</code>).</p>
+<h3 id="pipeline-pattern-transformaccumulate">Pipeline Pattern (Transform/Accumulate)<a class="headerlink" href="#pipeline-pattern-transformaccumulate" title="Permanent link">&para;</a></h3>
+<p>The factor computation pipeline is a clean two-stage design:</p>
+<ol>
+<li><strong>Transform</strong> -- stateless, maps input columns to output columns</li>
+<li><strong>Accumulate</strong> -- stateful, incrementally builds results from new input + previous results</li>
+</ol>
+<p>This separation means:
+- Transformers are easy to test in isolation
+- Accumulators maintain minimal state for incremental computation
+- The same transformer can be reused across different accumulators</p>
+<h2 id="coding-standards">Coding Standards<a class="headerlink" href="#coding-standards" title="Permanent link">&para;</a></h2>
+<h3 id="file-organization">File Organization<a class="headerlink" href="#file-organization" title="Permanent link">&para;</a></h3>
+<p>Each package follows a consistent structure:</p>
+<pre><code>package/
+  __init__.py      # Aggregates __all__ from submodules
+  submodule.py     # Implementation
+</code></pre>
+<p>The <code>__init__.py</code> pattern used throughout:</p>
+<pre><code class="language-python"># common code of the package
+__all__ = []
+
+# import all from submodule
+from .submodule import *
+from .submodule import __all__ as _submodule_all
+__all__ += _submodule_all
+</code></pre>
+<h3 id="naming-conventions">Naming Conventions<a class="headerlink" href="#naming-conventions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Convention</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entity class</td>
+<td>PascalCase</td>
+<td><code>Stock</code>, <code>Stockhk</code>, <code>Stockus</code></td>
+</tr>
+<tr>
+<td>Schema table</td>
+<td>snake_case</td>
+<td><code>stock_1d_hfq_kdata</code></td>
+</tr>
+<tr>
+<td>Factor class</td>
+<td>PascalCase, ends with <code>Factor</code></td>
+<td><code>MacdFactor</code>, <code>BullFactor</code></td>
+</tr>
+<tr>
+<td>Recorder class</td>
+<td>PascalCase, prefixed with provider</td>
+<td><code>EMStockKdataRecorder</code></td>
+</tr>
+<tr>
+<td>Trader class</td>
+<td>PascalCase, ends with <code>Trader</code></td>
+<td><code>StockTrader</code></td>
+</tr>
+<tr>
+<td>db_name</td>
+<td>snake_case</td>
+<td><code>stock_meta</code>, <code>stock_1d_hfq_kdata</code></td>
+</tr>
+<tr>
+<td>entity_id</td>
+<td><code>{type}_{exchange}_{code}</code></td>
+<td><code>stock_sh_000001</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration-management">Configuration Management<a class="headerlink" href="#configuration-management" title="Permanent link">&para;</a></h3>
+<p>Use the layered config system:</p>
+<pre><code class="language-python">from zvt import zvt_config
+
+# Read config values
+data_provider = zvt_config.get(&quot;data_provider&quot;, &quot;em&quot;)
+
+# Override at init time
+from zvt import init_env
+init_env(zvt_home=&quot;/custom/path&quot;, data_provider=&quot;joinquant&quot;)
+</code></pre>
+<h3 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h3>
+<p>The trader module defines specific exceptions in <code>src/zvt/trader/errors.py</code>:</p>
+<ul>
+<li><code>NotEnoughMoneyError</code> -- insufficient cash for order</li>
+<li><code>InvalidOrderError</code> -- order validation failure</li>
+<li><code>NotEnoughPositionError</code> -- trying to sell more than available</li>
+<li><code>InvalidOrderParamError</code> -- bad order parameters</li>
+<li><code>WrongKdataError</code> -- missing or corrupt price data</li>
+</ul>
+<p>Follow this pattern: define domain-specific exceptions rather than raising generic <code>Exception</code>.</p>
+<h2 id="creating-a-custom-factor">Creating a Custom Factor<a class="headerlink" href="#creating-a-custom-factor" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-define-the-factor-schema-optional-for-persistence">Step 1: Define the Factor Schema (optional, for persistence)<a class="headerlink" href="#step-1-define-the-factor-schema-optional-for-persistence" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python"># my_factors/schemas.py
+from sqlalchemy import Column, Float
+from sqlalchemy.orm import declarative_base
+from zvt.contract.register import register_schema
+from zvt.contract.schema import Mixin
+
+MyFactorBase = declarative_base()
+
+class MyRSIResult(MyFactorBase, Mixin):
+    __tablename__ = &quot;my_rsi_result&quot;
+    rsi = Column(Float)
+    filter_result = Column(Float)  # True/False for selection
+
+register_schema(db_name=&quot;my_rsi_result&quot;, schema_base=MyFactorBase)
+</code></pre>
+<h3 id="step-2-create-the-transformer">Step 2: Create the Transformer<a class="headerlink" href="#step-2-create-the-transformer" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python"># my_factors/rsi_transformer.py
+import pandas as pd
+from zvt.contract.factor import Transformer
+
+class RSITransformer(Transformer):
+    def __init__(self, window=14):
+        super().__init__()
+        self.window = window
+        self.indicators = [&quot;rsi&quot;]
+
+    def transform_one(self, entity_id: str, df: pd.DataFrame) -&gt; pd.DataFrame:
+        delta = df[&quot;close&quot;].diff()
+        gain = delta.where(delta &gt; 0, 0.0)
+        loss = -delta.where(delta &lt; 0, 0.0)
+
+        avg_gain = gain.rolling(window=self.window).mean()
+        avg_loss = loss.rolling(window=self.window).mean()
+
+        rs = avg_gain / avg_loss
+        df[&quot;rsi&quot;] = 100 - (100 / (1 + rs))
+        return df
+</code></pre>
+<h3 id="step-3-create-the-factor-class">Step 3: Create the Factor Class<a class="headerlink" href="#step-3-create-the-factor-class" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python"># my_factors/rsi_factor.py
+from zvt.factors.technical_factor import TechnicalFactor
+from zvt.contract.factor import FactorMeta
+from my_factors.rsi_transformer import RSITransformer
+from my_factors.schemas import MyRSIResult
+
+class RSIFactor(TechnicalFactor, metaclass=FactorMeta):
+    transformer = RSITransformer(window=14)
+    factor_schema = MyRSIResult
+
+    def compute_result(self):
+        super().compute_result()
+        # RSI &lt; 30 = oversold = buy signal
+        self.result_df = (self.factor_df[&quot;rsi&quot;] &lt; 30).to_frame(name=&quot;filter_result&quot;)
+</code></pre>
+<h3 id="step-4-use-the-factor">Step 4: Use the Factor<a class="headerlink" href="#step-4-use-the-factor" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">factor = RSIFactor(
+    codes=[&quot;000001&quot;, &quot;000002&quot;],
+    start_timestamp=&quot;2024-01-01&quot;,
+    end_timestamp=&quot;2024-12-31&quot;,
+    need_persist=True,
+)
+
+# Get buy targets for a specific date
+targets = factor.get_targets(timestamp=&quot;2024-06-15&quot;)
+
+# Visualize
+factor.draw(show=True)
+</code></pre>
+<h2 id="creating-a-custom-trader">Creating a Custom Trader<a class="headerlink" href="#creating-a-custom-trader" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-subclass-stocktrader">Step 1: Subclass StockTrader<a class="headerlink" href="#step-1-subclass-stocktrader" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from zvt.trader.trader import StockTrader
+from zvt.contract.factor import Factor
+from my_factors.rsi_factor import RSIFactor
+
+class RSITrader(StockTrader):
+    def init_factors(self, entity_ids, entity_schema, exchanges, codes,
+                     start_timestamp, end_timestamp, adjust_type=None):
+        return [
+            RSIFactor(
+                entity_schema=entity_schema,
+                codes=codes,
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp,
+                adjust_type=adjust_type,
+            )
+        ]
+
+    def on_factor_targets_filtered(self, timestamp, level, factor, long_targets, short_targets):
+        # Limit to top 5 positions
+        if len(long_targets) &gt; 5:
+            long_targets = long_targets[:5]
+        return long_targets, short_targets
+
+    def long_position_control(self):
+        # Always allocate 20% per position
+        return 0.2
+</code></pre>
+<h3 id="step-2-run-the-backtest">Step 2: Run the Backtest<a class="headerlink" href="#step-2-run-the-backtest" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">trader = RSITrader(
+    codes=[&quot;000001&quot;, &quot;000002&quot;, &quot;600036&quot;],
+    start_timestamp=&quot;2024-01-01&quot;,
+    end_timestamp=&quot;2024-12-31&quot;,
+    provider=&quot;em&quot;,
+    draw_result=True,
+)
+trader.run()
+</code></pre>
+<h2 id="creating-a-custom-recorder">Creating a Custom Recorder<a class="headerlink" href="#creating-a-custom-recorder" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-define-the-schema">Step 1: Define the Schema<a class="headerlink" href="#step-1-define-the-schema" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from sqlalchemy import Column, Float, String
+from sqlalchemy.orm import declarative_base
+from zvt.contract.register import register_schema
+from zvt.contract.schema import Mixin
+
+MyDataBase = declarative_base()
+
+class StockSentiment(MyDataBase, Mixin):
+    __tablename__ = &quot;stock_sentiment&quot;
+    code = Column(String(length=64))
+    name = Column(String(length=128))
+    sentiment_score = Column(Float)
+    mention_count = Column(Float)
+
+register_schema(db_name=&quot;stock_sentiment&quot;, schema_base=MyDataBase, entity_type=&quot;stock&quot;)
+</code></pre>
+<h3 id="step-2-implement-the-recorder">Step 2: Implement the Recorder<a class="headerlink" href="#step-2-implement-the-recorder" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from zvt.contract.recorder import TimeSeriesDataRecorder
+from zvt.domain.meta.stock_meta import Stock
+
+class SentimentRecorder(TimeSeriesDataRecorder):
+    provider = &quot;my_sentiment&quot;
+    entity_provider = &quot;em&quot;
+    entity_schema = Stock
+    data_schema = StockSentiment
+
+    def record(self, entity, start, end, size, timestamps):
+        # Fetch from your data source
+        url = f&quot;https://api.example.com/sentiment/{entity.code}&quot;
+        resp = self.http_session.get(url, params={&quot;start&quot;: start, &quot;end&quot;: end})
+        return resp.json()
+
+    def get_data_map(self):
+        return {
+            &quot;score&quot;: (&quot;sentiment_score&quot;, float),
+            &quot;mentions&quot;: (&quot;mention_count&quot;, int),
+        }
+</code></pre>
+<h3 id="step-3-record-data">Step 3: Record Data<a class="headerlink" href="#step-3-record-data" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">StockSentiment.record_data(provider=&quot;my_sentiment&quot;, code=&quot;000001&quot;)
+</code></pre>
+<h2 id="testing-strategy">Testing Strategy<a class="headerlink" href="#testing-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="test-environment">Test Environment<a class="headerlink" href="#test-environment" title="Permanent link">&para;</a></h3>
+<p>Set <code>TESTING_ZVT=1</code> to use the test home directory (<code>~/zvt-test-home</code>) with sample data:</p>
+<pre><code class="language-bash">TESTING_ZVT=1 pytest tests/
+</code></pre>
+<p>The test environment automatically unpacks sample data from <code>src/zvt/samples/data.zip</code>.</p>
+<h3 id="testing-factors">Testing Factors<a class="headerlink" href="#testing-factors" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">def test_macd_factor():
+    from zvt.factors.macd import BullFactor
+
+    factor = BullFactor(
+        codes=[&quot;000001&quot;],
+        start_timestamp=&quot;2023-01-01&quot;,
+        end_timestamp=&quot;2023-06-30&quot;,
+    )
+
+    assert factor.factor_df is not None
+    assert &quot;diff&quot; in factor.factor_df.columns
+    assert &quot;dea&quot; in factor.factor_df.columns
+    assert &quot;macd&quot; in factor.factor_df.columns
+    assert factor.result_df is not None
+    assert &quot;filter_result&quot; in factor.result_df.columns
+</code></pre>
+<h3 id="testing-data-correctness">Testing Data Correctness<a class="headerlink" href="#testing-data-correctness" title="Permanent link">&para;</a></h3>
+<p>Use the built-in <code>test_data_correctness()</code> class method:</p>
+<pre><code class="language-python">Stock1dKdata.test_data_correctness(
+    provider=&quot;em&quot;,
+    data_samples=[
+        {
+            &quot;id&quot;: &quot;stock_sh_000001_2024-01-02&quot;,
+            &quot;timestamp&quot;: &quot;2024-01-02&quot;,
+            &quot;open&quot;: 9.50,
+            &quot;close&quot;: 9.45,
+        }
+    ],
+)
+</code></pre>
+<h2 id="project-structure-best-practices">Project Structure Best Practices<a class="headerlink" href="#project-structure-best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="adding-a-new-entity-type">Adding a New Entity Type<a class="headerlink" href="#adding-a-new-entity-type" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create <code>src/zvt/domain/meta/&lt;entity&gt;_meta.py</code> with entity class and <code>register_schema()</code></li>
+<li>Create <code>src/zvt/domain/quotes/&lt;entity&gt;/</code> with kdata schemas for each interval level</li>
+<li>Add recorder(s) in <code>src/zvt/recorders/&lt;provider&gt;/</code></li>
+<li>Update <code>src/zvt/domain/__init__.py</code> to import the new submodule</li>
+</ol>
+<h3 id="adding-a-new-data-provider">Adding a New Data Provider<a class="headerlink" href="#adding-a-new-data-provider" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create <code>src/zvt/recorders/&lt;provider&gt;/</code> directory</li>
+<li>Implement recorder classes inheriting from <code>TimeSeriesDataRecorder</code> or <code>FixedCycleDataRecorder</code></li>
+<li>Set <code>provider = "{provider}"</code> and <code>data_schema</code> on each recorder class</li>
+<li>The metaclass handles registration automatically</li>
+</ol>
+<h3 id="adding-a-new-factor-type">Adding a New Factor Type<a class="headerlink" href="#adding-a-new-factor-type" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create factor class inheriting from <code>TechnicalFactor</code> or <code>Factor</code></li>
+<li>Implement a <code>Transformer</code> and/or <code>Accumulator</code></li>
+<li>Optionally define a <code>factor_schema</code> for persistence</li>
+<li>Use <code>metaclass=FactorMeta</code> for auto-registration</li>
+<li>Add to <code>src/zvt/factors/__init__.py</code> for discoverability</li>
+</ol>
+<div class="diagram"><pre class="mermaid">graph TD
+    subgraph &quot;Extension Points&quot;
+        A[New Entity Type] --&gt; A1[domain/meta/]
+        A --&gt; A2[domain/quotes/]
+        A --&gt; A3[recorders/]
+
+        B[New Provider] --&gt; B1[recorders/{provider}/]
+        B --&gt; B2[Set provider + data_schema]
+
+        C[New Factor] --&gt; C1[factors/]
+        C --&gt; C2[Transformer or Accumulator]
+        C --&gt; C3[Optional factor_schema]
+
+        D[New Trader] --&gt; D1[Subclass Trader/StockTrader]
+        D --&gt; D2[Override init_factors]
+        D --&gt; D3[Override position control]
+    end</pre><details><summary>Diagram source</summary><pre><code>graph TD
+    subgraph &quot;Extension Points&quot;
+        A[New Entity Type] --&gt; A1[domain/meta/]
+        A --&gt; A2[domain/quotes/]
+        A --&gt; A3[recorders/]
+
+        B[New Provider] --&gt; B1[recorders/{provider}/]
+        B --&gt; B2[Set provider + data_schema]
+
+        C[New Factor] --&gt; C1[factors/]
+        C --&gt; C2[Transformer or Accumulator]
+        C --&gt; C3[Optional factor_schema]
+
+        D[New Trader] --&gt; D1[Subclass Trader/StockTrader]
+        D --&gt; D2[Override init_factors]
+        D --&gt; D3[Override position control]
+    end</code></pre></details></div>
+
+<h2 id="debugging-tips">Debugging Tips<a class="headerlink" href="#debugging-tips" title="Permanent link">&para;</a></h2>
+<h3 id="inspecting-registered-schemas">Inspecting Registered Schemas<a class="headerlink" href="#inspecting-registered-schemas" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from zvt.contract import zvt_context
+
+# All registered entity types
+print(zvt_context.tradable_entity_types)
+
+# All schemas for a db_name
+print(zvt_context.dbname_map_schemas.get(&quot;stock_meta&quot;))
+
+# Providers for a schema
+from zvt.domain import Stock1dKdata
+print(Stock1dKdata.get_providers())
+
+# Recorder class for a provider
+print(Stock1dKdata.provider_map_recorder)
+</code></pre>
+<h3 id="inspecting-factor-state">Inspecting Factor State<a class="headerlink" href="#inspecting-factor-state" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from zvt.contract.zvt_info import FactorState
+
+# Query all factor states
+states = FactorState.query_data(provider=&quot;zvt&quot;, return_type=&quot;df&quot;)
+print(states)
+</code></pre>
+<h3 id="viewing-storage-layout">Viewing Storage Layout<a class="headerlink" href="#viewing-storage-layout" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from zvt import zvt_env
+import os
+
+data_path = zvt_env[&quot;data_path&quot;]
+for provider_dir in os.listdir(data_path):
+    full_path = os.path.join(data_path, provider_dir)
+    if os.path.isdir(full_path):
+        dbs = [f for f in os.listdir(full_path) if f.endswith(&quot;.db&quot;)]
+        print(f&quot;{provider_dir}: {len(dbs)} databases&quot;)
+</code></pre>
+<h2 id="source-references">Source References<a class="headerlink" href="#source-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Contract layer: <a href="../src/zvt/contract/">src/zvt/contract/</a></li>
+<li>Factor implementations: <a href="../src/zvt/factors/">src/zvt/factors/</a></li>
+<li>Recorder implementations: <a href="../src/zvt/recorders/">src/zvt/recorders/</a></li>
+<li>Trader engine: <a href="../src/zvt/trader/">src/zvt/trader/</a></li>
+<li>Domain model: <a href="../src/zvt/domain/">src/zvt/domain/</a></li>
+<li>Test directory: <a href="../tests/">tests/</a></li>
+<li>Sample data: <a href="../src/zvt/samples/">src/zvt/samples/</a></li>
+</ul>
+<h2 id="configuration-reference">Configuration Reference<a class="headerlink" href="#configuration-reference" title="Permanent link">&para;</a></h2>
+<p>ZVT uses a layered JSON configuration system. The default config ships at <code>src/zvt/config.json</code> and is copied to <code>~/zvt-home/config.json</code> on first run. Override values by editing the file or passing kwargs to <code>init_env()</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jq_username</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>JoinQuant account username (required for <code>joinquant</code> provider)</td>
+</tr>
+<tr>
+<td><code>jq_password</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>JoinQuant account password</td>
+</tr>
+<tr>
+<td><code>http_proxy</code></td>
+<td><code>str</code></td>
+<td><code>"127.0.0.1:1087"</code></td>
+<td>HTTP proxy address for outbound requests</td>
+</tr>
+<tr>
+<td><code>https_proxy</code></td>
+<td><code>str</code></td>
+<td><code>"127.0.0.1:1087"</code></td>
+<td>HTTPS proxy address</td>
+</tr>
+<tr>
+<td><code>smtp_host</code></td>
+<td><code>str</code></td>
+<td><code>"smtpdm.aliyun.com"</code></td>
+<td>SMTP server for email notifications (informer)</td>
+</tr>
+<tr>
+<td><code>smtp_port</code></td>
+<td><code>str</code></td>
+<td><code>"80"</code></td>
+<td>SMTP port</td>
+</tr>
+<tr>
+<td><code>email_username</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Email sender address</td>
+</tr>
+<tr>
+<td><code>email_password</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Email sender password</td>
+</tr>
+<tr>
+<td><code>wechat_app_id</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>WeChat Official Account app ID (for WeChat notifications)</td>
+</tr>
+<tr>
+<td><code>wechat_app_secrect</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>WeChat app secret</td>
+</tr>
+<tr>
+<td><code>qiye_wechat_bot_token</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Enterprise WeChat bot webhook token</td>
+</tr>
+<tr>
+<td><code>qmt_mini_data_path</code></td>
+<td><code>str</code></td>
+<td><code>"D:\\qmt\\userdata_mini"</code></td>
+<td>Path to QMT mini client data directory (Windows only)</td>
+</tr>
+<tr>
+<td><code>qmt_account_id</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>QMT trading account ID</td>
+</tr>
+<tr>
+<td><code>moonshot_api_key</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Moonshot AI API key (for AI tag suggestions)</td>
+</tr>
+<tr>
+<td><code>qwen_api_key</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Qwen AI API key (for AI tag suggestions)</td>
+</tr>
+<tr>
+<td><code>em_header</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Custom HTTP header for Eastmoney requests (set to browser User-Agent to avoid rate limits)</td>
+</tr>
+<tr>
+<td><code>storage.base_path</code></td>
+<td><code>str\|null</code></td>
+<td><code>null</code></td>
+<td>Override default data storage base path</td>
+</tr>
+<tr>
+<td><code>storage.path_template</code></td>
+<td><code>str\|null</code></td>
+<td><code>null</code></td>
+<td>Custom path template for database files</td>
+</tr>
+<tr>
+<td><code>storage.storage_routes</code></td>
+<td><code>dict</code></td>
+<td><code>{}</code></td>
+<td>Per-schema storage route overrides (see <code>storage_config.md</code>)</td>
+</tr>
+<tr>
+<td><code>storage.schema_providers</code></td>
+<td><code>dict</code></td>
+<td><code>{...}</code></td>
+<td>Maps db_name to list of providers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Environment variables:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ZVT_HOME</code></td>
+<td><code>~/zvt-home</code></td>
+<td>Root directory for all ZVT data, logs, and config</td>
+</tr>
+<tr>
+<td><code>TESTING_ZVT</code></td>
+<td>unset</td>
+<td>Set to <code>1</code> to use <code>~/zvt-test-home</code> with sample data</td>
+</tr>
+<tr>
+<td><code>SQLALCHEMY_WARN_20</code></td>
+<td><code>1</code></td>
+<td>SQLAlchemy 2.0 deprecation warnings (set by ZVT at import)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="1-modulenotfounderror-no-module-named-zvt">1. <code>ModuleNotFoundError: No module named 'zvt'</code><a class="headerlink" href="#1-modulenotfounderror-no-module-named-zvt" title="Permanent link">&para;</a></h3>
+<p>ZVT uses a <code>src/</code> layout. Install in development mode:</p>
+<pre><code class="language-bash">pip install -e .
+</code></pre>
+<h3 id="2-eastmoney-recorder-returns-empty-data-or-http-403">2. Eastmoney recorder returns empty data or HTTP 403<a class="headerlink" href="#2-eastmoney-recorder-returns-empty-data-or-http-403" title="Permanent link">&para;</a></h3>
+<p>Eastmoney may throttle requests without a valid browser header. Set <code>em_header</code> in <code>~/zvt-home/config.json</code> to your browser's <code>User-Agent</code> string, or add a delay between batch requests.</p>
+<h3 id="3-joinquant-authentication-fails">3. JoinQuant authentication fails<a class="headerlink" href="#3-joinquant-authentication-fails" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify your credentials at <a href="https://www.joinquant.com/">joinquant.com</a> first.</li>
+<li>Ensure <code>jq_username</code> and <code>jq_password</code> are set in <code>~/zvt-home/config.json</code> (not the package-level <code>src/zvt/config.json</code>).</li>
+<li>JoinQuant has daily API call limits on free accounts. Check your remaining quota.</li>
+</ul>
+<h3 id="4-sqlite-database-is-locked-error">4. SQLite <code>database is locked</code> error<a class="headerlink" href="#4-sqlite-database-is-locked-error" title="Permanent link">&para;</a></h3>
+<p>This occurs when multiple processes write to the same database. ZVT uses WAL mode for hot tables, but concurrent recorder processes can still conflict. Run only one recorder per (provider, schema) pair at a time, or configure separate <code>storage_routes</code> for different processes.</p>
+<h3 id="5-wrongkdataerror-during-factor-computation">5. <code>WrongKdataError</code> during factor computation<a class="headerlink" href="#5-wrongkdataerror-during-factor-computation" title="Permanent link">&para;</a></h3>
+<p>The factor requires kdata that has not been recorded yet. Record data first:</p>
+<pre><code class="language-python">Stock1dKdata.record_data(provider=&quot;em&quot;, code=&quot;000001&quot;)
+</code></pre>
+<h3 id="6-qmt-recorder-fails-with-importerror">6. QMT recorder fails with <code>ImportError</code><a class="headerlink" href="#6-qmt-recorder-fails-with-importerror" title="Permanent link">&para;</a></h3>
+<p>QMT is Windows-only and requires the QMT mini client to be installed and running. On Linux/macOS the QMT module is intentionally skipped. Ensure <code>qmt_mini_data_path</code> points to the correct directory.</p>
+<h3 id="7-proxy-connection-errors">7. Proxy connection errors<a class="headerlink" href="#7-proxy-connection-errors" title="Permanent link">&para;</a></h3>
+<p>The default proxy is <code>127.0.0.1:1087</code>. If you do not use a proxy, set both <code>http_proxy</code> and <code>https_proxy</code> to <code>""</code> in your config:</p>
+<pre><code class="language-python">init_env(zvt_home=&quot;~/zvt-home&quot;, http_proxy=&quot;&quot;, https_proxy=&quot;&quot;)
+</code></pre>
+<h3 id="8-pandas-settingwithcopywarning-raised-as-error">8. Pandas <code>SettingWithCopyWarning</code> raised as error<a class="headerlink" href="#8-pandas-settingwithcopywarning-raised-as-error" title="Permanent link">&para;</a></h3>
+<p>ZVT sets <code>pd.set_option("mode.chained_assignment", "raise")</code> at import time. If your custom code triggers this, create an explicit copy of the DataFrame before modifying it:</p>
+<pre><code class="language-python">df = original_df.copy()
+df[&quot;new_col&quot;] = ...
+</code></pre>
+<h3 id="9-factor-result_df-is-empty">9. Factor <code>result_df</code> is empty<a class="headerlink" href="#9-factor-result_df-is-empty" title="Permanent link">&para;</a></h3>
+<p>Check that: (a) data exists for the requested date range, (b) the <code>provider</code> argument matches how data was recorded, and (c) the entity codes are valid (format: <code>000001</code>, not <code>stock_sh_000001</code>).</p>
+<h3 id="10-storage-grows-too-large">10. Storage grows too large<a class="headerlink" href="#10-storage-grows-too-large" title="Permanent link">&para;</a></h3>
+<p>Each (provider, db_name) pair creates a separate SQLite file. To reclaim space, delete databases you no longer need from <code>~/zvt-home/data/&lt;provider&gt;/</code>. Use <code>zvt_env["data_path"]</code> to locate the directory programmatically.</p>
+<h2 id="security-considerations">Security Considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Credential storage</strong>: JoinQuant credentials, email passwords, WeChat secrets, and AI API keys are stored in <strong>plaintext</strong> in <code>~/zvt-home/config.json</code>. Restrict file permissions (<code>chmod 600</code>) and never commit this file to version control.</li>
+<li><strong>Proxy exposure</strong>: The default proxy setting (<code>127.0.0.1:1087</code>) assumes a local SOCKS/HTTP proxy. Ensure your proxy does not leak credentials or route traffic through untrusted networks.</li>
+<li><strong>QMT account security</strong>: The QMT account ID grants access to a real brokerage account. Protect <code>config.json</code> and the QMT data directory from unauthorized access.</li>
+<li><strong>SQL injection</strong>: ZVT uses SQLAlchemy ORM for all database access, which parameterizes queries. However, custom SQL strings passed to <code>pd.read_sql</code> should still be parameterized.</li>
+<li><strong>Network requests</strong>: Recorders fetch data over HTTP/HTTPS from Eastmoney, JoinQuant, Sina, and exchange sites. Verify that HTTPS is used where available and that proxy configurations do not downgrade connections.</li>
+<li><strong>Sample data in tests</strong>: The <code>TESTING_ZVT=1</code> mode unpacks <code>src/zvt/samples/data.zip</code> to <code>~/zvt-test-home/data/</code>. Ensure test environments do not accidentally connect to production data or real brokerage accounts.</li>
+<li><strong>AI API keys</strong>: Moonshot and Qwen API keys are used for the tagging system. Rotate keys regularly and use environment-specific keys rather than sharing across environments.</li>
+</ul>
+<hr />
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="README.md">README</a> — Project overview and quick start</li>
+<li><a href="architecture.md">Architecture</a> — System design and components</li>
+<li><a href="workflow.md">Workflow</a> — Event flows and processing pipelines</li>
+<li><a href="state-management.md">State Management</a> — State lifecycle and data models</li>
+</ul></main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true,securityLevel:'strict',theme:'default',flowchart:{useMaxWidth:true},sequence:{useMaxWidth:true}});
+</script></body></html>

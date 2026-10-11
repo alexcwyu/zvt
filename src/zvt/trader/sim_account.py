@@ -130,13 +130,13 @@ class SimAccountService(AccountService):
         latest_record: AccountStats = records[0]
 
         # create new orm object from latest record
-        account_stats_model = AccountStatsModel.from_orm(latest_record)
+        account_stats_model = AccountStatsModel.model_validate(latest_record)
         account = AccountStats()
         fill_domain_from_dict(account, account_stats_model.model_dump(exclude={"id", "positions"}))
 
         positions: List[Position] = []
         for position_domain in latest_record.positions:
-            position_model = PositionModel.from_orm(position_domain)
+            position_model = PositionModel.model_validate(position_domain)
             self.logger.debug("current position:{}".format(position_model))
             position = Position()
             fill_domain_from_dict(position, position_model.model_dump())
@@ -187,9 +187,9 @@ class SimAccountService(AccountService):
                 raise WrongKdataError("could not get kdata")
 
             if pd_is_not_null(kdata):
-                entity_type, _, _ = decode_entity_id(kdata["entity_id"][0])
+                entity_type, _, _ = decode_entity_id(kdata["entity_id"].iloc[0])
 
-                the_price = kdata["close"][0]
+                the_price = kdata["close"].iloc[0]
 
                 if the_price:
                     if trading_signal.position_pct:
@@ -258,7 +258,7 @@ class SimAccountService(AccountService):
                 adjust_type=self.adjust_type,
             )
 
-            closing_price = kdata["close"][0]
+            closing_price = kdata["close"].iloc[0]
 
             position.available_long = position.long_amount
             position.available_short = position.short_amount

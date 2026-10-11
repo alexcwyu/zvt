@@ -165,11 +165,11 @@ def generate_kdata_id(entity_id, timestamp, level):
 def to_high_level_kdata(kdata_df: pd.DataFrame, to_level: IntervalLevel):
     def to_close(s):
         if pd_is_not_null(s):
-            return s[-1]
+            return s.iloc[-1]
 
     def to_open(s):
         if pd_is_not_null(s):
-            return s[0]
+            return s.iloc[0]
 
     def to_high(s):
         return np.max(s)
@@ -180,11 +180,11 @@ def to_high_level_kdata(kdata_df: pd.DataFrame, to_level: IntervalLevel):
     def to_sum(s):
         return np.sum(s)
 
-    original_level = kdata_df["level"][0]
-    entity_id = kdata_df["entity_id"][0]
-    provider = kdata_df["provider"][0]
-    name = kdata_df["name"][0]
-    code = kdata_df["code"][0]
+    original_level = kdata_df["level"].iloc[0]
+    entity_id = kdata_df["entity_id"].iloc[0]
+    provider = kdata_df["provider"].iloc[0]
+    name = kdata_df["name"].iloc[0]
+    code = kdata_df["code"].iloc[0]
 
     entity_type, _, _ = decode_entity_id(entity_id=entity_id)
 
@@ -193,9 +193,9 @@ def to_high_level_kdata(kdata_df: pd.DataFrame, to_level: IntervalLevel):
 
     df: pd.DataFrame = None
     if to_level == IntervalLevel.LEVEL_1WEEK:
-        # loffset='-2'　用周五作为时间标签
+        # Preserve the anchored weekly labels used by the existing data contract.
         if entity_type == "stock":
-            df = kdata_df.resample("W", offset=pd.Timedelta(days=-2)).apply(
+            df = kdata_df.resample("W").apply(
                 {
                     "close": to_close,
                     "open": to_open,
@@ -206,7 +206,7 @@ def to_high_level_kdata(kdata_df: pd.DataFrame, to_level: IntervalLevel):
                 }
             )
         else:
-            df = kdata_df.resample("W", offset=pd.Timedelta(days=-2)).apply(
+            df = kdata_df.resample("W").apply(
                 {
                     "close": to_close,
                     "open": to_open,

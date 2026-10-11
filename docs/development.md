@@ -1,3 +1,36 @@
+<!-- ayu-maintenance-2026-10-12 -->
+# Current uv development workflow
+
+The maintained branch is `feature/ayu_develop`. The selected interpreter is Python `3.15`; `requires-python` records the range that was actually resolved. Python 3.15 was attempted first. Dependency/native-wheel failures and fallback evidence are recorded in [validation.md](validation.md).
+
+```sh
+export UV_PYTHON_PREFERENCE=only-managed
+uv python install 3.15
+uv lock --check
+uv sync --frozen --all-extras --all-groups
+uv run --no-sync python -m compileall -q src
+uv build
+PLOTLY_RENDERER=json uv run --no-sync python -m pytest
+```
+
+Use `uv lock --upgrade` when intentionally refreshing dependencies, then review `pyproject.toml`, `uv.lock`, and the existing full test suite. The dependency floors were refreshed from current PyPI release metadata while preserving meaningful upstream upper bounds. Compatibility exceptions are documented with their resolver/test evidence rather than hidden by disabling tests.
+
+The `src/` layout and build-backend package discovery preserve public import names. Wheel/sdist resources include the source-associated data and templates. Optional vendor SDKs, live credentials, databases and graphical/native libraries retain their original runtime requirements. Examples and test fixtures are not promoted into the library API.
+
+<!-- prior-development-notes -->
+
+## Compatibility decisions
+
+- The complete 96-case supplied suite runs on managed Python 3.15.0 without exclusions: 88 passed, 8 failed. All three supplied trader integration cases now pass.
+- Production code uses SQLAlchemy2 declarative_base/Session.get, pandas iloc for positional access, current hour/day/month frequencies, ISO-date JSON logging and Pydantic model_validate with existing from_attributes configuration. Public provider and account APIs remain intact.
+- Shenzhen XLSX exports omit a Normal named-style entry while providing its style index. The recorder restores only that missing metadata; worksheet values, formats and all other archive members are preserved. No warning filter is added.
+- The preexisting isolated recorder fixture now restores sys.modules after loading its stubbed module, preventing unrelated later integration imports from using fake packages. Assertions and case counts are unchanged.
+- Headless tests use PLOTLY_RENDERER=json with current IPython and nbformat in the dev group. Existing chart assertions execute and figures serialize without browser-server sockets.
+- Seven JoinQuant recorder cases receive HTTP403 with the explicit provider message that non-mainland-China IP addresses are unsupported. The EastMoney kline case receives RemoteDisconnected from the remote HTTPS endpoint. These eight external failures remain visible; no tests are disabled.
+
+
+For headless plotting validation, set `PLOTLY_RENDERER=json`; this renders figures through Plotly without opening browser-server sockets. Existing provider/recorder/trader cases still execute unchanged.
+
 # ZVT Development Guide
 
 Last updated: 2026-04-06

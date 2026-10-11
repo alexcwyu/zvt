@@ -30,8 +30,10 @@ def init_log(file_name="zvt.log", log_dir=None, simple_formatter=True):
 
     root_logger = logging.getLogger()
 
-    # reset the handlers
-    root_logger.handlers = []
+    # Reset handlers without leaving their file descriptors open.
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        handler.close()
 
     root_logger.setLevel(logging.INFO)
 

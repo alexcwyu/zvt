@@ -493,7 +493,7 @@ class Drawer(Draw):
                 for col in df.columns:
                     first = None
                     for i in range(0, len(df)):
-                        first = df[col][i]
+                        first = df[col].iloc[i]
                         if first != 0:
                             break
                     if first == 0:

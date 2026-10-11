@@ -160,7 +160,7 @@ def month_end_date(the_date):
 
 
 def month_start_end_ranges(start_date, end_date):
-    days = pd.date_range(start=start_date, end=end_date, freq="M")
+    days = pd.date_range(start=start_date, end=end_date, freq="ME")
     return [(month_start_date(d), month_end_date(d)) for d in days]
 
 

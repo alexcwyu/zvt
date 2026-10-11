@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Validation evidence: zvt</title><style>
+:root{color-scheme:light dark;--bg:#f6f8fa;--paper:#fff;--fg:#182332;--muted:#526274;--line:#d9e0e7;--accent:#1769aa}
+@media(prefers-color-scheme:dark){:root{--bg:#111820;--paper:#192330;--fg:#e6edf3;--muted:#a0b3c5;--line:#344354;--accent:#71b7ee}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,sans-serif}
+header{border-bottom:1px solid var(--line);padding:16px max(24px,calc((100vw - 1120px)/2));background:var(--paper);font-size:14px}
+main{max-width:1120px;margin:32px auto;padding:40px 48px;background:var(--paper);border:1px solid var(--line);border-radius:12px}
+h1,h2,h3,h4{line-height:1.3;scroll-margin-top:24px}h1{font-size:2.1rem}h2{margin-top:2.5em;border-bottom:1px solid var(--line);padding-bottom:.35em}h3{margin-top:1.8em}
+a{color:var(--accent);text-underline-offset:3px}code{font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border-radius:4px;padding:2px 5px}pre{overflow:auto;border:1px solid var(--line);background:var(--bg);padding:16px;border-radius:7px}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:9px 12px;text-align:left}th{background:var(--bg)}blockquote{border-left:4px solid var(--accent);margin:16px 0;padding:4px 20px;color:var(--muted)}
+.diagram{overflow-x:auto;margin:24px 0;padding:20px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#182332}.mermaid{border:0;background:none;text-align:center}.mermaid svg{height:auto;max-width:100%}details{font-size:13px;color:#526274}.headerlink{margin-left:.4em;font-size:.7em;text-decoration:none;color:var(--muted)}
+main{min-width:0;overflow-wrap:anywhere}table,pre{max-width:100%}.diagram svg{display:block}
+th,td{min-width:120px;overflow-wrap:normal}
+@media(max-width:740px){main{margin:0;padding:24px 18px;border:0;border-radius:0}h1{font-size:1.7rem}.diagram{padding:8px}}
+@media print{header,details,.headerlink{display:none}body,main{background:#fff;color:#000;border:0;margin:0;padding:0}a{color:#000}.diagram,pre{break-inside:avoid}}
+</style></head><body><header>Engineering documentation · <a href="validation.md">Markdown source</a></header><main><h1 id="validation-evidence-zvt">Validation evidence: zvt<a class="headerlink" href="#validation-evidence-zvt" title="Permanent link">&para;</a></h1>
+<p>Run date: 2026-10-12. Branch: <code>feature/ayu_develop</code>. Interpreter: <code>3.15.0 (main, Oct  9 2026, 15:11:47) [Clang 22.1.3 ]</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lock</td>
+<td>passed</td>
+</tr>
+<tr>
+<td>sync</td>
+<td>passed</td>
+</tr>
+<tr>
+<td>compile</td>
+<td>passed</td>
+</tr>
+<tr>
+<td>build</td>
+<td>passed</td>
+</tr>
+<tr>
+<td>tests</td>
+<td>failed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="current-result-and-compatibility-decisions">Current result and compatibility decisions<a class="headerlink" href="#current-result-and-compatibility-decisions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The complete 96-case supplied suite runs on managed Python 3.15.0 without exclusions: 88 passed, 8 failed. All three supplied trader integration cases now pass.</li>
+<li>Production code uses SQLAlchemy2 declarative_base/Session.get, pandas iloc for positional access, current hour/day/month frequencies, ISO-date JSON logging and Pydantic model_validate with existing from_attributes configuration. Public provider and account APIs remain intact.</li>
+<li>Shenzhen XLSX exports omit a Normal named-style entry while providing its style index. The recorder restores only that missing metadata; worksheet values, formats and all other archive members are preserved. No warning filter is added.</li>
+<li>The preexisting isolated recorder fixture now restores sys.modules after loading its stubbed module, preventing unrelated later integration imports from using fake packages. Assertions and case counts are unchanged.</li>
+<li>Headless tests use PLOTLY_RENDERER=json with current IPython and nbformat in the dev group. Existing chart assertions execute and figures serialize without browser-server sockets.</li>
+<li>Seven JoinQuant recorder cases receive HTTP403 with the explicit provider message that non-mainland-China IP addresses are unsupported. The EastMoney kline case receives RemoteDisconnected from the remote HTTPS endpoint. These eight external failures remain visible; no tests are disabled.</li>
+</ul>
+<p>Current unresolved checks:</p>
+<ul>
+<li>tests: exit 1; see <a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log">docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log</a></li>
+</ul>
+<h2 id="latest-full-suite-output">Latest full-suite output<a class="headerlink" href="#latest-full-suite-output" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">ponse = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+____________________________ test_1d_kdata_recorder ____________________________
+
+    def test_1d_kdata_recorder():
+&gt;       recorder = JqChinaStockKdataRecorder(
+            codes=SAMPLE_STOCK_CODES, sleeping_time=0, level=IntervalLevel.LEVEL_1DAY, real_time=False
+        )
+
+tests/recorders/joinquant/test_quote_recorder.py:33:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/zvt/recorders/joinquant/quotes/jq_stock_kdata_recorder.py:81: in __init__
+    get_token(zvt_config[&quot;jq_username&quot;], zvt_config[&quot;jq_password&quot;], force=True)
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:268: in get_token
+    token = _get_token(jqdata_env[&quot;username&quot;], jqdata_env[&quot;password&quot;])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+mob = '', pwd = ''
+
+    def _get_token(mob=None, pwd=None):
+        body = {
+            &quot;method&quot;: &quot;get_token&quot;,
+            &quot;mob&quot;: mob,
+            &quot;pwd&quot;: pwd,
+        }
+        response = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+__________________________ test_1d_hfq_kdata_recorder __________________________
+
+    def test_1d_hfq_kdata_recorder():
+&gt;       recorder = JqChinaStockKdataRecorder(
+            codes=[&quot;000338&quot;], sleeping_time=0, level=IntervalLevel.LEVEL_1DAY, real_time=False, adjust_type=&quot;hfq&quot;
+        )
+
+tests/recorders/joinquant/test_quote_recorder.py:43:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/zvt/recorders/joinquant/quotes/jq_stock_kdata_recorder.py:81: in __init__
+    get_token(zvt_config[&quot;jq_username&quot;], zvt_config[&quot;jq_password&quot;], force=True)
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:268: in get_token
+    token = _get_token(jqdata_env[&quot;username&quot;], jqdata_env[&quot;password&quot;])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+mob = '', pwd = ''
+
+    def _get_token(mob=None, pwd=None):
+        body = {
+            &quot;method&quot;: &quot;get_token&quot;,
+            &quot;mob&quot;: mob,
+            &quot;pwd&quot;: pwd,
+        }
+        response = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+____________________________ test_1h_kdata_recorder ____________________________
+
+    def test_1h_kdata_recorder():
+&gt;       recorder = JqChinaStockKdataRecorder(
+            codes=[&quot;000338&quot;],
+            sleeping_time=0,
+            level=IntervalLevel.LEVEL_1HOUR,
+            real_time=False,
+            start_timestamp=&quot;2019-01-01&quot;,
+        )
+
+tests/recorders/joinquant/test_quote_recorder.py:53:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/zvt/recorders/joinquant/quotes/jq_stock_kdata_recorder.py:81: in __init__
+    get_token(zvt_config[&quot;jq_username&quot;], zvt_config[&quot;jq_password&quot;], force=True)
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:268: in get_token
+    token = _get_token(jqdata_env[&quot;username&quot;], jqdata_env[&quot;password&quot;])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+mob = '', pwd = ''
+
+    def _get_token(mob=None, pwd=None):
+        body = {
+            &quot;method&quot;: &quot;get_token&quot;,
+            &quot;mob&quot;: mob,
+            &quot;pwd&quot;: pwd,
+        }
+        response = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+____________________________ test_5m_kdata_recorder ____________________________
+
+    def test_5m_kdata_recorder():
+&gt;       recorder = JqChinaStockKdataRecorder(
+            codes=[&quot;000338&quot;], sleeping_time=0, level=IntervalLevel.LEVEL_5MIN, real_time=False, start_timestamp=&quot;2019-01-01&quot;
+        )
+
+tests/recorders/joinquant/test_quote_recorder.py:67:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/zvt/recorders/joinquant/quotes/jq_stock_kdata_recorder.py:81: in __init__
+    get_token(zvt_config[&quot;jq_username&quot;], zvt_config[&quot;jq_password&quot;], force=True)
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:268: in get_token
+    token = _get_token(jqdata_env[&quot;username&quot;], jqdata_env[&quot;password&quot;])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+mob = '', pwd = ''
+
+    def _get_token(mob=None, pwd=None):
+        body = {
+            &quot;method&quot;: &quot;get_token&quot;,
+            &quot;mob&quot;: mob,
+            &quot;pwd&quot;: pwd,
+        }
+        response = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+____________________________ test_stock_money_flow _____________________________
+
+    def test_stock_money_flow():
+        provider = &quot;joinquant&quot;
+        # Stock.record_data(provider=provider)
+&gt;       StockMoneyFlow.record_data(
+            codes=[&quot;300999&quot;, &quot;688981&quot;], provider=provider, start_timestamp=&quot;2020-12-14&quot;, compute_index_money_flow=False
+        )
+
+tests/recorders/joinquant/test_stock_money_flow.py:8:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/zvt/contract/schema.py:320: in record_data
+    r = recorder_class(**kw)
+        ^^^^^^^^^^^^^^^^^^^^
+src/zvt/recorders/joinquant/misc/jq_stock_money_flow_recorder.py:67: in __init__
+    get_token(zvt_config[&quot;jq_username&quot;], zvt_config[&quot;jq_password&quot;], force=True)
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:268: in get_token
+    token = _get_token(jqdata_env[&quot;username&quot;], jqdata_env[&quot;password&quot;])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+mob = '', pwd = ''
+
+    def _get_token(mob=None, pwd=None):
+        body = {
+            &quot;method&quot;: &quot;get_token&quot;,
+            &quot;mob&quot;: mob,
+            &quot;pwd&quot;: pwd,
+        }
+        response = requests.post(url, data=json.dumps(body))
+
+        if response.status_code != 200:
+            print(f&quot;request jqdata error,code:{response.status_code},text:{response.text}&quot;)
+&gt;           raise HttpAccessError(code=response.status_code, msg=response.text)
+E           jqdatapy.api.HttpAccessError: code:403,msg:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+
+.venv/lib/python3.15/site-packages/jqdatapy/api.py:323: HttpAccessError
+----------------------------- Captured stdout call -----------------------------
+StockMoneyFlow registered recorders:{'joinquant': &lt;class 'zvt.recorders.joinquant.misc.jq_stock_money_flow_recorder.JoinquantStockMoneyFlowRecorder'&gt;, 'sina': &lt;class 'zvt.recorders.sina.money_flow.sina_stock_money_flow_recorder.SinaStockMoneyFlowRecorder'&gt;}
+request jqdata error,code:403,text:很抱歉，当前暂不支持来自非中国大陆地区 IP 地址的访问
+=========================== short test summary info ============================
+FAILED tests/recorders/em/test_em_api.py::test_get_kdata - requests.exception...
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_1wk_kdata_recorder
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_1mon_kdata_recorder
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_1d_kdata_recorder
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_1d_hfq_kdata_recorder
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_1h_kdata_recorder
+FAILED tests/recorders/joinquant/test_quote_recorder.py::test_5m_kdata_recorder
+FAILED tests/recorders/joinquant/test_stock_money_flow.py::test_stock_money_flow
+=================== 8 failed, 88 passed in 119.10s (0:01:59) ===================
+
+</code></pre>
+<h2 id="exact-commands-and-exit-codes">Exact commands and exit codes<a class="headerlink" href="#exact-commands-and-exit-codes" title="Permanent link">&para;</a></h2>
+<p>Unsuccessful rows are retained as historical compatibility attempts; they are not claims that a current passing check remains blocked. Source-build probes use isolated temporary copies to preserve the selected repository environment.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th style="text-align: right;">Exit</th>
+<th style="text-align: right;">Seconds</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv lock --upgrade --python 3.15</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.3</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-lock-3.15.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv sync --all-extras --all-groups --python 3.15 --no-build --no-install-project</code></td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1.73</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-wheel-probe-3.15.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv lock --upgrade --python 3.14</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.31</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-lock-3.14.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv sync --all-extras --all-groups --python 3.14 --no-build --no-install-project</code></td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.05</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-wheel-probe-3.14.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv sync --all-extras --all-groups --python 3.14</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.87</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-sync-3.14.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv build --python 3.14</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4.23</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-build.log">log</a></td>
+</tr>
+<tr>
+<td><code>/Users/alex/.local/share/uv/python/cpython-3.14-macos-aarch64-none/bin/python3.14 -m compileall -q src</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.62</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-compile.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv run --no-sync python -m pytest</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">80.98</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv run --no-sync python -m pytest</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">725.33</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-pandas-sqlalchemy-compatibility.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv lock --upgrade --python 3.15</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.58</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-lock-python315-source-supported.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv sync --all-extras --all-groups --python 3.15</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4.91</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-sync-python315-source-supported.log">log</a></td>
+</tr>
+<tr>
+<td><code>env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">25.1</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-headless-isolated-mocks.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv run --no-sync python -Werror::SyntaxWarning -m compileall -q -f src</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.38</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-compile-clean-source.log">log</a></td>
+</tr>
+<tr>
+<td><code>env PLOTLY_RENDERER=json uv run --no-sync python -m pytest -vv -o faulthandler_timeout=60</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">119.43</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-headless-current-source.log">log</a></td>
+</tr>
+<tr>
+<td><code>env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">130.4</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-current-apis.log">log</a></td>
+</tr>
+<tr>
+<td><code>env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">108.87</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-full-positional-account.log">log</a></td>
+</tr>
+<tr>
+<td><code>env PLOTLY_RENDERER=json uv run --frozen --all-extras --all-groups python -m pytest tests -v</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">122.39</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-tests-python315-final-all-accounts.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv lock --upgrade</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.55</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-lock-python315-final.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv sync --frozen --all-extras --all-groups</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.16</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-sync-python315-final.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv build</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2.57</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-build-python315-final.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv run --frozen --all-extras --all-groups python -m compileall -q src tests</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.14</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-compile-python315-final-recorded.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv run --frozen --all-extras --all-groups python -c import sys, importlib.metadata as m; print(sys.version); print('\n'.join(sorted(d.metadata['Name']+'=='+d.version for d in m.distributions())))</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.18</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-versions-final.log">log</a></td>
+</tr>
+<tr>
+<td><code>uv add --group dev ipython nbformat</code></td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.04</td>
+<td><a href="../../docs/maintenance-2026-10-12/zvt-dependency-add-final-recorded.log">log</a></td>
+</tr>
+</tbody>
+</table>
+<p>The versions-final log records the exact interpreter patch release and every installed dependency version. The machine-readable <a href="../../docs/maintenance-2026-10-12/zvt-result.json">result</a> includes branch/default ancestry, status, artifacts and unresolved checks.</p>
+<h2 id="dependency-floor-refresh">Dependency floor refresh<a class="headerlink" href="#dependency-floor-refresh" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The table records the initial metadata refresh. Later compatibility constraints and vendor sources are explained above and the final authoritative requirements are in <a href="../pyproject.toml">pyproject.toml</a> and <a href="../uv.lock">uv.lock</a>. No test cases were added, removed or disabled. Existing deprecated-API cases retain their assertions while explicitly checking the documented warning.</p></main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true,securityLevel:'strict',theme:'default',flowchart:{useMaxWidth:true},sequence:{useMaxWidth:true}});
+</script></body></html>

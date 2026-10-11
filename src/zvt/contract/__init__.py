@@ -40,9 +40,9 @@ class IntervalLevel(Enum):
         if self == IntervalLevel.LEVEL_30MIN:
             return "30min"
         if self == IntervalLevel.LEVEL_1HOUR:
-            return "1H"
+            return "1h"
         if self == IntervalLevel.LEVEL_4HOUR:
-            return "4H"
+            return "4h"
         if self >= IntervalLevel.LEVEL_1DAY:
             return "1D"
 
@@ -60,7 +60,7 @@ class IntervalLevel(Enum):
         if self == IntervalLevel.LEVEL_4HOUR:
             return pd_timestamp.floor("4h")
         if self == IntervalLevel.LEVEL_1DAY:
-            return pd_timestamp.floor("1d")
+            return pd_timestamp.floor("1D")
 
     def to_minute(self):
         return int(self.to_second() / 60)
