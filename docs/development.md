@@ -1,4 +1,10 @@
 <!-- ayu-maintenance-2026-10-12 -->
+
+<!-- current-documentation-provenance -->
+Documentation reviewed: 2026-10-13 / Git source base: `85e215aa7abd2093ea7fde1a00378c13f473641f` / [Current architecture and feature guide](ayu-develop.md).
+Historical execution commands/results below retain their original dates and scope; this metadata update is not a new application test run.
+<!-- /current-documentation-provenance -->
+
 # Current uv development workflow
 
 The maintained branch is `feature/ayu_develop`. The selected interpreter is Python `3.15`; `requires-python` records the range that was actually resolved. Python 3.15 was attempted first. Dependency/native-wheel failures and fallback evidence are recorded in [validation.md](validation.md).
@@ -78,7 +84,7 @@ graph LR
     subgraph "At Class Definition Time"
         RC[Recorder class defined] -->|Meta.__new__| REG1[Register provider + data_schema<br/>in zvt_context]
         FC[Factor class defined] -->|FactorMeta.__new__| REG2[Register in<br/>factor_cls_registry]
-        EC[Entity class defined] -->|@register_entity| REG3[Register entity type<br/>in zvt_context]
+        EC[Entity class defined] -->|"@register_entity"| REG3[Register entity type<br/>in zvt_context]
     end
 
     subgraph "At Runtime"
@@ -464,7 +470,7 @@ graph TD
         A --> A2[domain/quotes/]
         A --> A3[recorders/]
 
-        B[New Provider] --> B1[recorders/{provider}/]
+        B[New Provider] --> B1["recorders/{provider}/"]
         B --> B2[Set provider + data_schema]
 
         C[New Factor] --> C1[factors/]
